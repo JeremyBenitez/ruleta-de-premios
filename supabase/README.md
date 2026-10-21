@@ -1,0 +1,41 @@
+# Sorteo compartido de WiWU
+
+La app desplegada en Netlify solicita el resultado a `netlify/functions/draw-prize.ts`.
+Esa función invoca `draw_wiwu_prize` en Supabase. La función SQL serializa los
+giros con un bloqueo transaccional y garantiza que no haya tres resultados de
+susto consecutivos en el historial compartido de esta ruleta.
+
+## Configuración
+
+1. Crea un proyecto en Supabase.
+2. En el SQL Editor de Supabase, ejecuta el contenido de
+   `migrations/202610210001_shared_raffle.sql`.
+3. En Netlify, abre **Site configuration → Environment variables** y configura:
+   - `SUPABASE_URL`: URL del proyecto Supabase.
+   - `SUPABASE_SERVICE_ROLE_KEY`: clave `service_role` del proyecto.
+4. Mantén `SUPABASE_SERVICE_ROLE_KEY` solo en Netlify. No la pongas en variables
+   `VITE_*`, en el frontend ni en el repositorio.
+5. Despliega la carpeta del proyecto con Netlify CLI o conecta a Netlify un
+   repositorio que contenga esta app. No basta con subir solo `dist`: el
+   despliegue también debe incluir `netlify/functions/draw-prize.ts`.
+6. La configuración `netlify.toml` define el comando de build, `dist` como
+   carpeta publicada y `netlify/functions` como carpeta de funciones.
+
+Netlify proporciona `URL` y `DEPLOY_PRIME_URL`, que la función utiliza para
+aceptar solicitudes del sitio desplegado. El modo Vite local continúa usando el
+sorteo local de desarrollo.
+
+## Probabilidades
+
+- Giro normal: 30 % premio, 10 % giro extra y 60 % susto.
+- Giro extra: 10 % premio y 90 % susto.
+- Tras dos sustos seguidos en cualquier dispositivo, el siguiente resultado
+  está garantizado como premio o giro extra si corresponde a un giro normal;
+  si es el giro extra, está garantizado como premio.
+
+La base guarda el contador global de sustos consecutivos y un registro de cada
+resultado, sin guardar datos personales. El endpoint es público para que la app
+pueda jugar sin inicio de sesión; por eso no reemplaza un sistema central de
+identidad o de límites de giros. Los límites diarios actuales siguen siendo
+locales al dispositivo. Cada solicitud incluye un identificador para que un
+reintento después de un problema de conexión no cuente como un segundo giro.

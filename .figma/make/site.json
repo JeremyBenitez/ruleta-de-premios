@@ -1,0 +1,10 @@
+{
+  "description": "Engage users with an interactive prize wheel experience featuring fun animations and sound effects, perfect for promotions and events by Wiwu.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
