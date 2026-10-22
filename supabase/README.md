@@ -33,7 +33,7 @@ Vite de `pnpm dev` no ejecuta funciones):
 1. En la raíz del proyecto, crea un archivo local `.env` con `SUPABASE_URL` y
    `SUPABASE_SERVICE_ROLE_KEY`. `.env` está ignorado por Git; no lo subas ni
    compartas su contenido.
-2. Ejecuta `pnpm dlx netlify-cli dev`.
+2. Ejecuta `pnpm --package=netlify-cli dlx netlify dev`.
 3. Abre `http://localhost:8888` y, en la consola del navegador de esa página,
    ejecuta:
 
