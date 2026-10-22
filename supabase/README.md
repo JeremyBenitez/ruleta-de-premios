@@ -13,15 +13,17 @@ susto consecutivos en el historial compartido de esta ruleta.
 3. Ejecuta también `migrations/202610220001_safe_raffle_preview.sql` en el SQL
    Editor. Esta migración agrega una prueba segura que comparte la lógica del
    sorteo sin insertar resultados ni cambiar la racha.
-4. En Netlify, abre **Site configuration → Environment variables** y configura:
+4. Ejecuta `migrations/202610220002_fix_shared_raffle_streak.sql` para corregir
+   el control de idempotencia del sorteo.
+5. En Netlify, abre **Site configuration → Environment variables** y configura:
    - `SUPABASE_URL`: URL del proyecto Supabase.
    - `SUPABASE_SERVICE_ROLE_KEY`: clave `service_role` del proyecto.
-5. Mantén `SUPABASE_SERVICE_ROLE_KEY` solo en Netlify. No la pongas en variables
+6. Mantén `SUPABASE_SERVICE_ROLE_KEY` solo en Netlify. No la pongas en variables
    `VITE_*`, en el frontend ni en el repositorio.
-6. Despliega la carpeta del proyecto con Netlify CLI o conecta a Netlify un
+7. Despliega la carpeta del proyecto con Netlify CLI o conecta a Netlify un
    repositorio que contenga esta app. No basta con subir solo `dist`: el
    despliegue también debe incluir `netlify/functions/draw-prize.ts`.
-7. La configuración `netlify.toml` define el comando de build, `dist` como
+8. La configuración `netlify.toml` define el comando de build, `dist` como
    carpeta publicada y `netlify/functions` como carpeta de funciones.
 
 Netlify proporciona `URL` y `DEPLOY_PRIME_URL`, que la función utiliza para
