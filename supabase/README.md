@@ -25,6 +25,29 @@ Netlify proporciona `URL` y `DEPLOY_PRIME_URL`, que la función utiliza para
 aceptar solicitudes del sitio desplegado. El modo Vite local continúa usando el
 sorteo local de desarrollo.
 
+## Probar la conexión sin sortear
+
+Para probar Netlify Functions desde tu computadora, usa Netlify Dev (el servidor
+Vite de `pnpm dev` no ejecuta funciones):
+
+1. En la raíz del proyecto, crea un archivo local `.env` con `SUPABASE_URL` y
+   `SUPABASE_SERVICE_ROLE_KEY`. `.env` está ignorado por Git; no lo subas ni
+   compartas su contenido.
+2. Ejecuta `pnpm dlx netlify-cli dev`.
+3. Abre `http://localhost:8888` y, en la consola del navegador de esa página,
+   ejecuta:
+
+   ```js
+   fetch('/.netlify/functions/raffle-health').then(async response => ({
+     status: response.status,
+     body: await response.json()
+   }))
+   ```
+
+Una respuesta `200` con `{ ok: true, service: "raffle" }` confirma que la
+función local puede leer el estado de Supabase. Esta comprobación es de solo
+lectura: no realiza sorteos ni cambia la racha compartida.
+
 ## Probabilidades
 
 - Giro normal: 30 % premio, 10 % giro extra y 60 % susto.
