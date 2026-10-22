@@ -20,7 +20,7 @@ export default async function handler(request: Request): Promise<Response> {
   const isLocalDevelopmentOrigin =
     origin !== null &&
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-  if (!origin || (!allowedOrigins.includes(origin) && !isLocalDevelopmentOrigin)) {
+  if (origin && !allowedOrigins.includes(origin) && !isLocalDevelopmentOrigin) {
     return jsonResponse(403, { error: 'Origen no permitido.' })
   }
 
