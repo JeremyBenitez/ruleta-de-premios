@@ -15,15 +15,17 @@ susto consecutivos en el historial compartido de esta ruleta.
    sorteo sin insertar resultados ni cambiar la racha.
 4. Ejecuta `migrations/202610220002_fix_shared_raffle_streak.sql` para corregir
    el control de idempotencia del sorteo.
-5. En Netlify, abre **Site configuration → Environment variables** y configura:
+5. Ejecuta `migrations/202610220003_forced_raffle_previews.sql` para permitir
+   simular cada tipo de resultado sin registrar giros ni modificar la racha.
+6. En Netlify, abre **Site configuration → Environment variables** y configura:
    - `SUPABASE_URL`: URL del proyecto Supabase.
    - `SUPABASE_SERVICE_ROLE_KEY`: clave `service_role` del proyecto.
-6. Mantén `SUPABASE_SERVICE_ROLE_KEY` solo en Netlify. No la pongas en variables
+7. Mantén `SUPABASE_SERVICE_ROLE_KEY` solo en Netlify. No la pongas en variables
    `VITE_*`, en el frontend ni en el repositorio.
-7. Despliega la carpeta del proyecto con Netlify CLI o conecta a Netlify un
+8. Despliega la carpeta del proyecto con Netlify CLI o conecta a Netlify un
    repositorio que contenga esta app. No basta con subir solo `dist`: el
    despliegue también debe incluir `netlify/functions/draw-prize.ts`.
-8. La configuración `netlify.toml` define el comando de build, `dist` como
+9. La configuración `netlify.toml` define el comando de build, `dist` como
    carpeta publicada y `netlify/functions` como carpeta de funciones.
 
 Netlify proporciona `URL` y `DEPLOY_PRIME_URL`, que la función utiliza para
@@ -70,10 +72,24 @@ fetch('/.netlify/functions/raffle-preview', {
 }))
 ```
 
-Una respuesta `200` incluye `dryRun: true` y el tipo de resultado simulado. La
-función solo lee la racha actual; no escribe en la tabla de giros ni modifica el
-contador compartido. Ejecuta primero la migración
-`202610220001_safe_raffle_preview.sql` y despliega la función actualizada.
+Para probar cada tipo sin azar, cambia el cuerpo por uno de estos:
+
+```js
+JSON.stringify({ allowAgain: true, forceKind: 'scare' })
+JSON.stringify({ allowAgain: true, forceKind: 'charge' })
+JSON.stringify({ allowAgain: true, forceKind: 'trick' })
+JSON.stringify({ allowAgain: true, forceKind: 'again_spin' })
+```
+
+Una respuesta `200` incluye `dryRun: true`, el tipo de resultado y `forced:
+true` para resultados solicitados. La función solo lee la racha actual; no
+escribe en la tabla de giros ni modifica el contador compartido. Ejecuta primero
+las migraciones `202610220001_safe_raffle_preview.sql` y
+`202610220003_forced_raffle_previews.sql`, y despliega la función actualizada.
+
+Esto prueba la respuesta del backend para cada resultado. Para comprobar el
+diseño de cada pantalla, usa el simulador local de desarrollo; las vistas de
+prueba no registran premios en producción.
 
 ## Probabilidades
 

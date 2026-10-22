@@ -60,9 +60,31 @@ export default async function handler(request: Request): Promise<Response> {
     typeof body !== 'object' ||
     body === null ||
     !('allowAgain' in body) ||
-    typeof body.allowAgain !== 'boolean'
+    typeof body.allowAgain !== 'boolean' ||
+    ('forceKind' in body &&
+      body.forceKind !== undefined &&
+      body.forceKind !== null &&
+      body.forceKind !== 'scare' &&
+      body.forceKind !== 'charge' &&
+      body.forceKind !== 'trick' &&
+      body.forceKind !== 'again_spin')
   ) {
     return jsonResponse(400, { error: 'La solicitud de prueba no es válida.' })
+  }
+
+  const forceKind =
+    'forceKind' in body &&
+    (body.forceKind === 'scare' ||
+      body.forceKind === 'charge' ||
+      body.forceKind === 'trick' ||
+      body.forceKind === 'again_spin')
+      ? body.forceKind
+      : null
+
+  if (forceKind === 'again_spin' && body.allowAgain === false) {
+    return jsonResponse(400, {
+      error: 'El giro extra solo se puede simular cuando allowAgain es true.',
+    })
   }
 
   const supabaseUrl = process.env.SUPABASE_URL
@@ -83,7 +105,14 @@ export default async function handler(request: Request): Promise<Response> {
           Authorization: `Bearer ${serviceRoleKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ p_allow_again: body.allowAgain }),
+        body: JSON.stringify(
+          forceKind === null
+            ? { p_allow_again: body.allowAgain }
+            : {
+                p_allow_again: body.allowAgain,
+                p_forced_kind: forceKind,
+              }
+        ),
       }
     )
   } catch (error) {
@@ -117,5 +146,6 @@ export default async function handler(request: Request): Promise<Response> {
     dryRun: true,
     prizeIndex: rows[0].prize_index,
     kind: rows[0].prize_kind,
+    forced: forceKind !== null,
   })
 }
