@@ -18,7 +18,6 @@ export default async function handler(request: Request): Promise<Response> {
     (value): value is string => Boolean(value)
   )
   const isLocalDevelopmentOrigin =
-    process.env.CONTEXT === 'dev' &&
     origin !== null &&
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
   if (!origin || (!allowedOrigins.includes(origin) && !isLocalDevelopmentOrigin)) {
