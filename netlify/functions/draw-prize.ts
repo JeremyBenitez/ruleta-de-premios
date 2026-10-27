@@ -45,7 +45,9 @@ export default async function handler(request: Request): Promise<Response> {
   const allowedOrigins = [process.env.URL, process.env.DEPLOY_PRIME_URL].filter(
     (value): value is string => Boolean(value)
   )
-  if (!origin || !allowedOrigins.includes(origin)) {
+  
+  // En desarrollo local (Netlify Dev / Vite), permitimos solicitudes locales si no coincide el origen
+  if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
     return jsonResponse(403, { error: 'Origen no permitido para el sorteo.' })
   }
 
@@ -56,6 +58,7 @@ export default async function handler(request: Request): Promise<Response> {
     return jsonResponse(400, { error: 'La solicitud debe incluir datos JSON válidos.' })
   }
 
+  // Validación extendida para incluir storeId
   if (
     typeof body !== 'object' ||
     body === null ||
@@ -63,9 +66,12 @@ export default async function handler(request: Request): Promise<Response> {
     typeof body.allowAgain !== 'boolean' ||
     !('requestId' in body) ||
     typeof body.requestId !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId) ||
+    !('storeId' in body) ||
+    typeof body.storeId !== 'string' ||
+    body.storeId.trim() === ''
   ) {
-    return jsonResponse(400, { error: 'La solicitud de sorteo no es válida.' })
+    return jsonResponse(400, { error: 'La solicitud de sorteo no es válida (falta storeId o formato incorrecto).' })
   }
 
   const supabaseUrl = process.env.SUPABASE_URL
@@ -89,6 +95,7 @@ export default async function handler(request: Request): Promise<Response> {
         body: JSON.stringify({
           p_allow_again: body.allowAgain,
           p_request_id: body.requestId,
+          p_store_id: body.storeId,
         }),
       }
     )

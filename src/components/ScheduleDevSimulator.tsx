@@ -216,6 +216,7 @@ export function ScheduleDevSimulator({
           {activeTab === 'schedule' && (
             <div>
               <div className="dev-sim-group">
+                
                 <label>Escenario de prueba</label>
                 <select
                   className="dev-sim-select"

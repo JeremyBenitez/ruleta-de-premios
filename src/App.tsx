@@ -27,8 +27,15 @@ import {
   SimulationPreset,
 } from './components/ScheduleDevSimulator'
 
-type Screen = 'qr' | 'play' | 'wheel' | 'result'
+type Screen = 'store_select' | 'play' | 'wheel' | 'result'
 export type PrizeKind = 'scare' | 'charge' | 'trick' | 'again_spin'
+
+export interface Store {
+  id: string
+  brand: string
+  name: string
+  is_active?: boolean
+}
 
 export type Prize = {
   id: number
@@ -165,10 +172,40 @@ function Brand() {
   )
 }
 
-function Header({ muted, onToggleSound }: { muted: boolean; onToggleSound: () => void }) {
+function Header({
+  muted,
+  onToggleSound,
+  currentStoreLabel,
+  onChangeStore,
+}: {
+  muted: boolean
+  onToggleSound: () => void
+  currentStoreLabel?: string
+  onChangeStore?: () => void
+}) {
   return (
-    <header className="header">
-      <Brand />
+    <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Brand />
+        {currentStoreLabel && (
+          <button
+            onClick={onChangeStore}
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              color: '#fff',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              fontSize: '10px',
+              cursor: 'pointer',
+              lineHeight: 1.2,
+            }}
+            title="Cambiar de tienda"
+          >
+            📍 {currentStoreLabel} 🔄
+          </button>
+        )}
+      </div>
       <button className="sound-button" onClick={onToggleSound} aria-label={muted ? 'Activar sonido' : 'Silenciar sonido'}>
         <SoundIcon muted={muted} />
       </button>
@@ -176,71 +213,125 @@ function Header({ muted, onToggleSound }: { muted: boolean; onToggleSound: () =>
   )
 }
 
-function QrScreen({
-  onPreview,
-  scheduleCheck,
-}: {
-  onPreview: () => void
-  scheduleCheck: GameScheduleCheck
-}) {
-  const [qr, setQr] = useState('')
-  const playUrl = `${window.location.origin}${window.location.pathname}?screen=play`
+function StoreSelectorScreen({ onSelectStore }: { onSelectStore: (storeId: string, label: string) => void }) {
+  const [stores, setStores] = useState<Store[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [selectedBrand, setSelectedBrand] = useState<string>('')
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('')
 
   useEffect(() => {
-    QRCode.toDataURL(playUrl, {
-      width: 420,
-      margin: 1,
-      errorCorrectionLevel: 'H',
-      color: { dark: '#150729', light: '#ffffff' },
-    }).then(setQr)
-  }, [playUrl])
+    async function fetchStores() {
+      try {
+        const response = await fetch('/.netlify/functions/get-stores')
+        if (response.ok) {
+          const data = await response.json()
+          setStores(data)
+        }
+      } catch (e) {
+        console.error('No se pudieron cargar las tiendas', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStores()
+  }, [])
+
+  const brands = Array.from(new Set(stores.map((s) => s.brand)))
+  const filteredStores = stores.filter((s) => s.brand === selectedBrand)
+
+  const handleConfirm = () => {
+    const storeObj = stores.find((s) => s.id === selectedStoreId)
+    if (storeObj) {
+      onSelectStore(storeObj.id, `${storeObj.brand} - ${storeObj.name}`)
+    }
+  }
 
   return (
-    <main className="qr-screen">
-      <div className="cobweb-container cobweb-container--fullscreen" aria-hidden="true">
+    <main className="mobile-screen play-screen">
+      <div className="cobweb-container" aria-hidden="true">
         <Cobweb className="cobweb-tr" />
         <Cobweb className="cobweb-bl" />
         <WebSpider />
       </div>
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
-      <div className="qr-copy">
-        <div className="eyebrow"><span /> EXPERIENCIA HALLOWEEN 2026</div>
-        <h1>
-          ¡Gira <span>y gana!</span>
-          <PumpkinIcon className="title-pumpkin" />
-        </h1>
-        <p>Escanea, gira y descubre qué sorpresa<br />tiene WIWU preparada para ti.</p>
-        <div className="steps">
-          {['Escanea', 'Gira', 'Descubre'].map((step, index) => (
-            <div className="step" key={step}><b>0{index + 1}</b><span>{step}</span></div>
-          ))}
-        </div>
+      <section className="play-content" style={{ zIndex: 5, width: '100%', maxWidth: '340px' }}>
+        <span className="mini-label">EXPERIENCIA HALLOWEEN</span>
+        <h1>Selecciona<br />tu <em>tienda</em></h1>
+        <p>Elige la marca y sucursal en la que te encuentras.</p>
 
-        {/* Badge descriptivo de los días de juego */}
-        <div className="qr-schedule-badge">
-          <span>📅 Días:</span> Martes y Miércoles (8:00 AM - 8:00 PM) • Hasta el 31 de Octubre
-        </div>
-      </div>
-
-      <div className="qr-area">
-        <div className="qr-orbit orbit-one" />
-        <div className="qr-orbit orbit-two" />
-        <div className="qr-card">
-          <div className="qr-corners">
-            {qr ? <img src={qr} alt="Código QR para jugar Gira y gana" /> : <div className="qr-loading" />}
-            <div className="qr-logo">
-              <img src="/img/images.png" alt="WiWU" />
+        {loading ? (
+          <p style={{ color: '#fff', margin: '20px 0' }}>Cargando sucursales...</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', marginTop: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+              <label style={{ fontSize: '11px', color: '#ffaa6c', fontWeight: 'bold' }}>1. Selecciona la Empresa / Marca:</label>
+              <select
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: '#1c0f2b',
+                  color: '#fff',
+                  border: '1px solid #ff7a1a',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+                value={selectedBrand}
+                onChange={(e) => {
+                  setSelectedBrand(e.target.value)
+                  setSelectedStoreId('')
+                }}
+              >
+                <option value="">-- Elige una Marca --</option>
+                {brands.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+              <label style={{ fontSize: '11px', color: '#ffaa6c', fontWeight: 'bold' }}>2. Selecciona la Sucursal:</label>
+              <select
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: '#1c0f2b',
+                  color: '#fff',
+                  border: '1px solid #ff7a1a',
+                  fontSize: '14px',
+                  opacity: selectedBrand ? 1 : 0.4,
+                  outline: 'none',
+                }}
+                disabled={!selectedBrand}
+                value={selectedStoreId}
+                onChange={(e) => setSelectedStoreId(e.target.value)}
+              >
+                <option value="">-- Elige una Sucursal --</option>
+                {filteredStores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              className="primary-button"
+              style={{ width: '100%', padding: '14px', marginTop: '10px', opacity: selectedStoreId ? 1 : 0.5 }}
+              disabled={!selectedStoreId}
+              onClick={handleConfirm}
+            >
+              <span>ENTRAR AL JUEGO</span>
+            </button>
           </div>
-          <strong>
-            {scheduleCheck.status === 'EVENT_ENDED'
-              ? 'EVENTO FINALIZADO'
-              : 'ESCANEA PARA JUGAR'}
-          </strong>
-        </div>
-        <button className="preview-link" onClick={onPreview}>Vista previa móvil <span>→</span></button>
-      </div>
+        )}
+
+        <small className="legal" style={{ marginTop: '16px' }}>
+          Cada sucursal cuenta con su cupo de 2 premios diarios independientes.
+        </small>
+      </section>
     </main>
   )
 }
@@ -526,7 +617,14 @@ function ResultScreen({
 }
 
 export default function App() {
-  const initialScreen: Screen = 'play'
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(() => {
+    return localStorage.getItem('wiwu_store_id') || ''
+  })
+  const [selectedStoreLabel, setSelectedStoreLabel] = useState<string>(() => {
+    return localStorage.getItem('wiwu_store_label') || ''
+  })
+
+  const initialScreen: Screen = selectedStoreId ? 'play' : 'store_select'
   const [screen, setScreen] = useState<Screen>(initialScreen)
   const [muted, setMuted] = useState(false)
   const [rotation, setRotation] = useState(0)
@@ -539,7 +637,6 @@ export default function App() {
   const stopWheelSound = useRef<(() => void) | null>(null)
   const sharedRaffleRequestId = useRef<string | null>(null)
 
-  // Control de simulación de fecha / horario para desarrollo y verificación
   const [simPreset, setSimPreset] = useState<SimulationPreset>('REAL')
   const [simDate, setSimDate] = useState<Date | null>(null)
   const [simPlayed, setSimPlayed] = useState<boolean>(false)
@@ -547,7 +644,6 @@ export default function App() {
     getDailyPlayState()
   )
 
-  // Estado del horario actual
   const effectiveDate = simDate || new Date()
   const [scheduleCheck, setScheduleCheck] = useState<GameScheduleCheck>(() =>
     checkGameSchedule(effectiveDate)
@@ -558,7 +654,6 @@ export default function App() {
     setDailyPlayState(getDailyPlayState(date))
   }
 
-  // Verificación periódica en tiempo real (cada 30 segundos) si está en modo REAL
   useEffect(() => {
     if (simPreset !== 'REAL') return
     const interval = window.setInterval(() => {
@@ -573,12 +668,28 @@ export default function App() {
     spinInProgress.current = false
   }, [])
 
-  // Control de forzado de premio para pruebas en desarrollo
   const [forcedPrizeKind, setForcedPrizeKind] = useState<PrizeKind | 'random'>('random')
 
   function goTo(next: Screen) {
     setScreen(next)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSelectStore = (storeId: string, label: string) => {
+    localStorage.setItem('wiwu_store_id', storeId)
+    localStorage.setItem('wiwu_store_label', label)
+    setSelectedStoreId(storeId)
+    setSelectedStoreLabel(label)
+    refreshSchedule()
+    goTo('play')
+  }
+
+  const handleChangeStore = () => {
+    localStorage.removeItem('wiwu_store_id')
+    localStorage.removeItem('wiwu_store_label')
+    setSelectedStoreId('')
+    setSelectedStoreLabel('')
+    goTo('store_select')
   }
 
   async function spin() {
@@ -603,10 +714,26 @@ export default function App() {
         raffle = drawPrize(forcedPrizeKind, allowAgain)
       } else {
         sharedRaffleRequestId.current ??= crypto.randomUUID()
-        raffle = await drawPrizeFromSharedBackend(
-          allowAgain,
-          sharedRaffleRequestId.current
-        )
+        
+        const response = await fetch('/.netlify/functions/draw-prize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            allowAgain,
+            requestId: sharedRaffleRequestId.current,
+            storeId: selectedStoreId
+          })
+        })
+
+        if (!response.ok) throw new Error('Error en el servidor de sorteos')
+        const data = await response.json()
+
+        raffle = {
+          prizeIndex: data.prizeIndex,
+          kind: data.kind,
+          prize: prizes[data.prizeIndex],
+          jitterAngle: 0
+        }
         sharedRaffleRequestId.current = null
       }
     } catch (error) {
@@ -661,6 +788,10 @@ export default function App() {
     }, 4300)
   }
 
+  const handleTestSelectStore = (storeId: string, label: string) => {
+    handleSelectStore(storeId, label)
+  }
+
   const handleSelectPreset = (preset: SimulationPreset, customDate: Date | null) => {
     setSimPreset(preset)
     setSimDate(customDate)
@@ -671,19 +802,17 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header muted={muted} onToggleSound={() => setMuted((value) => !value)} />
+      <Header
+        muted={muted}
+        onToggleSound={() => setMuted((value) => !value)}
+        currentStoreLabel={selectedStoreLabel}
+        onChangeStore={handleChangeStore}
+      />
 
-      {/*
-      Pantalla QR (Totem / Pantalla de bienvenida), disponible para reactivarla:
-      {screen === 'qr' && (
-        <QrScreen
-          onPreview={() => goTo('play')}
-          scheduleCheck={scheduleCheck}
-        />
+      {screen === 'store_select' && (
+        <StoreSelectorScreen onSelectStore={handleTestSelectStore} />
       )}
-      */}
 
-      {/* Pantalla Play (Inicio móvil al escanear) */}
       {screen === 'play' && (
         scheduleCheck.canPlay ? (
           <PlayScreen onPlay={() => goTo('wheel')} />
@@ -695,7 +824,6 @@ export default function App() {
         )
       )}
 
-      {/* Pantalla Ruleta */}
       {screen === 'wheel' && (
         scheduleCheck.canPlay ? (
           <WheelScreen
@@ -712,7 +840,6 @@ export default function App() {
         )
       )}
 
-      {/* Pantalla Resultado */}
       {screen === 'result' && (
         <ResultScreen
           prize={result}
@@ -726,7 +853,6 @@ export default function App() {
         />
       )}
 
-      {/* Simulador de Horarios y Algoritmo de Premios para pruebas */}
       {import.meta.env.DEV && (
         <ScheduleDevSimulator
           currentPreset={simPreset}
