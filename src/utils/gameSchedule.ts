@@ -2,7 +2,7 @@
  * WiWU Ruleta de Premios - Control de Horarios y Disponibilidad
  *
  * Reglas de juego:
- * 1. Días habilitados: Solo Martes y Miércoles.
+ * 1. Días habilitados: Solo Martes y Miércoles, y el día especial 31 de Octubre.
  * 2. Horario: De 8:00 AM a 8:00 PM (08:00 a 20:00).
  * 3. Límite de evento: Hasta el 31 de Octubre (23:59:59). Pasada esa fecha: Evento finalizado.
  * 4. Límite por dispositivo: 1 tirada al día, más un giro extra si sale.
@@ -51,9 +51,18 @@ export function isEventEnded(date: Date = new Date(), eventYear: number = EVENT_
   return date.getTime() > eventEnd.getTime()
 }
 
-/** Verifica si hoy es Martes (2) o Miércoles (3) */
+/** Verifica si hoy es Martes (2), Miércoles (3) o el gran día 31 de Octubre */
 export function isAllowedDay(date: Date = new Date()): boolean {
   const day = date.getDay()
+  const month = date.getMonth() // Octubre es el mes 9 (0-indexed)
+  const dayOfMonth = date.getDate()
+
+  // Si hoy es 31 de Octubre, se permite abrir independientemente del día de la semana
+  if (month === 9 && dayOfMonth === 31) {
+    return true
+  }
+
+  // De lo contrario, solo se permite los Martes (2) y Miércoles (3)
   return day === 2 || day === 3
 }
 
@@ -246,8 +255,17 @@ export function getNextOpenDateDescription(date: Date = new Date()): string {
   const day = date.getDay()
   const hours = date.getHours()
   const minutes = date.getMinutes()
+  const month = date.getMonth()
+  const dayOfMonth = date.getDate()
   const isPastClosing = hours > 20 || (hours === 20 && minutes > 0)
   const isBeforeOpening = hours < 8
+
+  // Manejo especial para la gran fecha de hoy 31 de Octubre
+  if (month === 9 && dayOfMonth === 31) {
+    if (isBeforeOpening) return 'Abre hoy 31 de Octubre a las 8:00 AM'
+    if (isPastClosing) return 'Campaña de Halloween finalizada'
+    return '¡Abierto hoy 31 de Octubre hasta las 8:00 PM!'
+  }
 
   if (day === 2) {
     // Martes
@@ -292,18 +310,18 @@ export function checkGameSchedule(date: Date = new Date()): GameScheduleCheck {
     }
   }
 
-  // 2. Verificar día de la semana (solo Martes y Miércoles)
+  // 2. Verificar día de la semana (Martes, Miércoles o 31 de Octubre)
   if (!isAllowedDay(date)) {
     return {
       status: 'CLOSED_DAY',
       isOpen: false,
       canPlay: false,
-      badge: 'SOLO MARTES Y MIÉRCOLES',
+      badge: 'SOLO MARTES, MIÉRCOLES Y 31 DE OCTUBRE',
       title: 'RULETA CERRADA HOY',
       subtitle:
-        'Nuestra ruleta misteriosa de Halloween solo está disponible los martes y miércoles.',
+        'Nuestra ruleta misteriosa de Halloween solo está disponible los martes, miércoles y el 31 de octubre.',
       detailText:
-        'Ven a jugar los martes y miércoles de 8:00 AM a 8:00 PM (hasta el 31 de octubre). ¡Guarda la fecha y prueba tu suerte!',
+        'Ven a jugar en los días habilitados de 8:00 AM a 8:00 PM. ¡Guarda la fecha y prueba tu suerte!',
       nextOpeningText: nextOpening,
     }
   }
@@ -321,7 +339,7 @@ export function checkGameSchedule(date: Date = new Date()): GameScheduleCheck {
         'El horario de juego es de 8:00 AM a 8:00 PM. ¡Te esperamos en ese intervalo para girar!',
       detailText: isEarly
         ? 'Los espíritus de Halloween están descansando. La ruleta iniciará puntualmente a las 8:00 AM.'
-        : 'La jornada de hoy ha culminado a las 8:00 PM. Vuelve mañana o en nuestro próximo día habilitado a las 8:00 AM.',
+        : 'La jornada de hoy ha culminado a las 8:00 PM. Vuelve en nuestro próximo día habilitado a las 8:00 AM.',
       nextOpeningText: nextOpening,
     }
   }
@@ -337,7 +355,7 @@ export function checkGameSchedule(date: Date = new Date()): GameScheduleCheck {
       subtitle:
         'Ya usaste todas tus oportunidades de hoy.\nVuelve en nuestro próximo día de juego.',
       detailText:
-        'Cada dispositivo tiene 1 giro al día y puede obtener uno extra si la ruleta lo concede. Vuelve el próximo martes o miércoles de 8:00 AM a 8:00 PM.',
+        'Cada dispositivo tiene 1 giro al día y puede obtener uno extra si la ruleta lo concede.',
       nextOpeningText: nextOpening,
     }
   }
